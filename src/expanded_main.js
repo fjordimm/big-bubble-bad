@@ -26,6 +26,8 @@ const ANIMALMAXVEL = 0.8;
 const ANIMALMAXROTVEL = 0.04;
 const CAPTUREDANIMALRANDSPEED = 1.5;
 
+const BUBBLEFILLDELTA = 0.1;
+
 let g_mainMouse;
 let g_mainKeyboard;
 let g_mainCamera;
@@ -80,15 +82,13 @@ function Tick(runtime)
 		if (!Tick_clickAlreadyDown)
 		{
 			Tick_clickAlreadyDown = true;
-
-			if (mouseIsOverButton)
-			{
-				alert("buton");
-				g_layer.isVisible = false;
-			}
 		}
 
-		if (!mouseIsOverButton)
+		if (mouseIsOverButton)
+		{
+			g_playerBubble.g_bubbleSize += BUBBLEFILLDELTA;
+		}
+		else
 		{
 			const mouseX = g_mainMouse.getMouseX();
 			const mouseY = g_mainMouse.getMouseY();
@@ -126,41 +126,6 @@ function Tick(runtime)
 	else
 	{
 		Tick_clickAlreadyDown = false;
-	}
-
-	if (g_mainMouse.isMouseButtonDown(0))
-	{
-		const mouseX = g_mainMouse.getMouseX();
-		const mouseY = g_mainMouse.getMouseY();
-	
-		const xDisp = mouseX - g_player.x;
-		const yDisp = mouseY - g_player.y;
-		const angle = Math.atan(yDisp / xDisp);
-		const thingus = (Math.sign(xDisp) == -1) ? Math.PI : 0;
-		const xDelta = -Math.cos(angle + thingus);
-		const yDelta = -Math.sin(angle + thingus);
-
-		g_player.g_xVel += xDelta * PLAYERACC;
-		g_player.g_yVel += yDelta * PLAYERACC;
-		
-		if (Tick_counter % BUBBLESHOOTINCR == 0)
-		{
-			const shotBubble = runtime.objects.Bubble.createInstance(LAYER, g_player.x, g_player.y);
-			shotBubble.g_bubbleSize = 1;
-			shotBubble.g_bubbleType = "shotBub";
-			shotBubble.g_popTime = BUBBLESHOOTDESTROYDELAY;
-
-			const finalBubbleShootRand = BUBBLESHOOTRANDMULT * Math.exp(-BUBBLESHOOTRANDSCALE * (g_player.g_xVel * xDelta + g_player.g_yVel * yDelta));
-			const angleMB = angle + Math.random() * finalBubbleShootRand - 0.5 * finalBubbleShootRand;
-			const thingusMB = (Math.sign(xDisp) == -1) ? Math.PI : 0;
-			const xDeltaMB = -Math.cos(angleMB + thingusMB);
-			const yDeltaMB = -Math.sin(angleMB + thingusMB);
-
-			shotBubble.g_xVel = -xDeltaMB * BUBBLESHOOTERACC + g_player.g_xVel;
-			shotBubble.g_yVel = -yDeltaMB * BUBBLESHOOTERACC + g_player.g_yVel;
-
-			g_playerBubble.g_bubbleSize -= 0.01;
-		}
 	}
 
 	g_player.x += g_player.g_xVel;
@@ -298,6 +263,7 @@ function Tick(runtime)
 			}
 
 			alert(`You recovered ${capturedAnimalCount} animals!`);
+			g_playerBubble.g_bubbleSize = 0;
 		}
 	}
 	else
