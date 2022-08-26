@@ -269,6 +269,8 @@ function Tick(runtime)
 	else
 	{
 		Tick_alreadyAtShip = false;
+
+		
 	}
 
 	g_mainCamera.lookAtPosition(g_player.x, g_player.y, CAMERAZ, g_player.x, g_player.y, 0, 0, 1, 0);
