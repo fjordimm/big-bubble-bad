@@ -4,33 +4,33 @@ const GAMELAYER = 0;
 const TITLELAYER = 1;
 const CAMERAZ = 200;
 
-const PLAYERACC = 0.05;
+const PLAYERACC = 0.0004;
 
 const BUBBLESHOOTERACC = 3.7;
-const BUBBLESHOOTINCR = 5;
+const BUBBLESHOOTINCR = 90;
 const BUBBLESHOOTRANDMULT = 0.3;
 const BUBBLESHOOTRANDSCALE = 0.3;
 const BUBBLESHOOTDESTROYDELAY = 100;
 const BUBBLESIZEMULT = 20;
 
 const ASTEROIDGENRENDDIST = 5;
-const ASTEROIDGENSPACING = 400;
-const ASTEROIDGENRANDOFFSET = 300;
+const ASTEROIDGENSPACING = 700;
+const ASTEROIDGENRANDOFFSET = 370;
 const ASTEROIDMAXSIZE = 300;
 const ASTEROIDMINSIZE = 100;
 
 const ANIMALGENRENDDIST = 5;
-const ANIMALGENSPACING = 400;
-const ANIMALGENRANDOFFSET = 300;
+const ANIMALGENSPACING = 900;
+const ANIMALGENRANDOFFSET = 900;
 const ANIMALSIZE = 100;
 const ANIMALMAXVEL = 0.8;
 const ANIMALMAXROTVEL = 0.04;
 const CAPTUREDANIMALRANDSPEED = 1.5;
 
 const BUBBLEFILLDELTA = 0.1;
-const MINPLAYERBUBBLESIZE = 5;
+const MINPLAYERBUBBLESIZE = 7;
 
-const ANIMALCOUNTTOWIN = 3;
+const ANIMALCOUNTTOWIN = 10;
 
 let g_mainMouse;
 let g_mainKeyboard;
@@ -90,40 +90,45 @@ function Tick(runtime)
 	if (!isPaused)
 	{
 		Tick_counter++;
+
+		if (Tick_counter % 20 <= 10)
+		{
+			g_button.setAnimation("0");
+		}
+		else
+		{
+			g_button.setAnimation("1");
+		}
 		
 		if (g_mainMouse.isMouseButtonDown(0))
 		{
 			g_titleDisplay.isVisible = false;
 			const mouseIsOverButton = g_mainMouse.getMouseX() > g_button.x - g_button.width / 2 && g_mainMouse.getMouseX() < g_button.x + g_button.width / 2 && g_mainMouse.getMouseY() > g_button.y - g_button.height / 2 && g_mainMouse.getMouseY() < g_button.y + g_button.height / 2;
 
-			if (!Tick_clickAlreadyDown)
-			{
-				Tick_clickAlreadyDown = true;
-			}
-
-			if (mouseIsOverButton)
+			if (mouseIsOverButton && g_player.testOverlap(g_ship))
 			{
 				if (g_playerBubble.g_bubbleSize < MINPLAYERBUBBLESIZE)
 				{ g_playerBubble.g_bubbleSize = MINPLAYERBUBBLESIZE; }
 				else
-				{ g_playerBubble.g_bubbleSize += BUBBLEFILLDELTA; }
+				{ g_playerBubble.g_bubbleSize += BUBBLEFILLDELTA; g_playerBubble.isVisible = true; }
 			}
-			else if (g_player.testOverlap(g_ship) || g_playerBubble.g_bubbleSize > MINPLAYERBUBBLESIZE)
+			else if (g_playerBubble.g_bubbleSize >= MINPLAYERBUBBLESIZE)
 			{
 				const mouseX = g_mainMouse.getMouseX();
 				const mouseY = g_mainMouse.getMouseY();
 			
 				const xDisp = mouseX - g_player.x;
 				const yDisp = mouseY - g_player.y;
+				const distToMouse = Math.sqrt(Math.pow(xDisp, 2) + Math.pow(yDisp, 2));
 				const angle = Math.atan(yDisp / xDisp);
 				const thingus = (Math.sign(xDisp) == -1) ? Math.PI : 0;
 				const xDelta = -Math.cos(angle + thingus);
 				const yDelta = -Math.sin(angle + thingus);
 
-				g_player.g_xVel += xDelta * PLAYERACC;
-				g_player.g_yVel += yDelta * PLAYERACC;
+				g_player.g_xVel += xDelta * PLAYERACC * distToMouse;
+				g_player.g_yVel += yDelta * PLAYERACC * distToMouse;
 				
-				if (Tick_counter % BUBBLESHOOTINCR == 0)
+				if (Tick_counter % Math.floor(BUBBLESHOOTINCR / Math.sqrt(distToMouse)) == 0)
 				{
 					const shotBubble = runtime.objects.Bubble.createInstance(GAMELAYER, g_player.x, g_player.y);
 					shotBubble.g_bubbleSize = 1;
@@ -140,17 +145,40 @@ function Tick(runtime)
 					shotBubble.g_yVel = -yDeltaMB * BUBBLESHOOTERACC + g_player.g_yVel;
 
 					if (g_playerBubble.g_bubbleSize > MINPLAYERBUBBLESIZE)
-					{ g_playerBubble.g_bubbleSize -= 0.01; }
+					{ g_playerBubble.g_bubbleSize -= 0.05; }
 				}
 			}
 			else
 			{
+				
+				if (g_playerBubble.isVisible)
+				{
+					const popAnimationBubble = runtime.objects.Bubble.createInstance(GAMELAYER, g_playerBubble.x, g_playerBubble.y - 100);
+					popAnimationBubble.g_bubbleSize = g_playerBubble.g_bubbleSize;
+					popAnimationBubble.g_bubbleType = "shotBub";
+					popAnimationBubble.g_popTime = 30;
+					popAnimationBubble.setAnimation("popping");
+					popAnimationBubble.g_xVel = g_player.g_xVel;
+					popAnimationBubble.g_yVel = g_player.g_yVel;
+				}
+
 				g_playerBubble.isVisible = false;
+			}
+
+			if (!Tick_clickAlreadyDown)
+			{
+				Tick_clickAlreadyDown = true;
 			}
 		}
 		else
 		{
 			Tick_clickAlreadyDown = false;
+		}
+
+		if (g_player.testOverlap(g_ship) && g_playerBubble.g_bubbleSize < MINPLAYERBUBBLESIZE)
+		{
+			g_player.g_xVel *= 0.9;
+			g_player.g_yVel *= 0.9;
 		}
 
 		g_player.x += g_player.g_xVel;
@@ -171,6 +199,18 @@ function Tick(runtime)
 					allBubbles[i].g_popTime--;
 					if (allBubbles[i].g_popTime <= 0)
 					{ allBubbles[i].destroy(); }
+				}
+			}
+		}
+
+		let eeecapturedAnimalCount = 0;
+		{
+			const allAnimals = runtime.objects.Animal.getAllInstances();
+			for (let i = 0; i < allAnimals.length; i++)
+			{
+				if (allAnimals[i].g_isCaptured)
+				{
+					eeecapturedAnimalCount++;
 				}
 			}
 		}
@@ -206,11 +246,14 @@ function Tick(runtime)
 
 				if (allAnimals[i].testOverlap(g_playerBubble))
 				{
-					allAnimals[i].g_isCaptured = true;
-					allAnimals[i].g_bubRelX = 0;
-					allAnimals[i].g_bubRelY = 0;
-					allAnimals[i].g_bubRelVelX = Math.random() * CAPTUREDANIMALRANDSPEED - 0.5 * CAPTUREDANIMALRANDSPEED;
-					allAnimals[i].g_bubRelVelY = Math.random() * CAPTUREDANIMALRANDSPEED - 0.5 * CAPTUREDANIMALRANDSPEED;
+					if (eeecapturedAnimalCount < (g_playerBubble.g_bubbleSize - MINPLAYERBUBBLESIZE) / 3)
+					{
+						allAnimals[i].g_isCaptured = true;
+						allAnimals[i].g_bubRelX = 0;
+						allAnimals[i].g_bubRelY = 0;
+						allAnimals[i].g_bubRelVelX = Math.random() * CAPTUREDANIMALRANDSPEED - 0.5 * CAPTUREDANIMALRANDSPEED;
+						allAnimals[i].g_bubRelVelY = Math.random() * CAPTUREDANIMALRANDSPEED - 0.5 * CAPTUREDANIMALRANDSPEED;
+					}
 				}
 
 				if (allAnimals[i].testOverlap(g_ship))
@@ -253,6 +296,7 @@ function Tick(runtime)
 					const randSize = Math.random() * (ASTEROIDMAXSIZE - ASTEROIDMINSIZE) + ASTEROIDMINSIZE;
 					newAsteroid.width = randSize;
 					newAsteroid.height = randSize;
+					newAsteroid.setAnimation("" + Math.floor(Math.random() * 2));
 					newAsteroid.angle = Math.random() * 2 * Math.PI;
 				}
 			}
@@ -272,7 +316,7 @@ function Tick(runtime)
 					const randOffsetY = Math.random() * ANIMALGENRANDOFFSET - 0.5 * ANIMALGENRANDOFFSET;
 					let newAnimal = runtime.objects.Animal.createInstance(GAMELAYER, animalX * ANIMALGENSPACING + randOffsetX, animalY * ANIMALGENSPACING + randOffsetY);
 					newAnimal.g_isCaptured = false;
-					newAnimal.setAnimation("" + Math.floor(Math.random() * 7));
+					newAnimal.setAnimation("" + Math.floor(Math.random() * 6));
 					newAnimal.width = ANIMALSIZE;
 					newAnimal.height = ANIMALSIZE;
 					newAnimal.angle = Math.random() * 2 * Math.PI;
